@@ -2,9 +2,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 import time
 import os
-from doc_processor import get_info
+from doc_processor import extraction_agent
 
-# --- FORCE LIGHT THEME AT THE FRAMEWORK LEVEL ---
+# --- FORCE LIGHT THEME AT THE FRAMEWORK LEVEL --- Claude
 _config_dir = os.path.join(os.path.dirname(__file__), ".streamlit")
 _config_path = os.path.join(_config_dir, "config.toml")
 if not os.path.exists(_config_path):
@@ -20,10 +20,10 @@ if not os.path.exists(_config_path):
             "font = \"sans serif\"\n"
         )
 
-# Set up page and wide layout
+
 st.set_page_config(page_title="ClaimAdvocate AI", page_icon="⚖️", layout="wide")
 
-# Custom CSS Overrides
+# Custom CSS Overrides -- Claude
 st.markdown(
     """
     <style>
@@ -39,6 +39,7 @@ st.markdown(
 st.title("⚖️ Patient Insurance Claim Advocate")
 st.markdown("---")
 
+# Claude
 def scroll_to_bottom():
     components.html(
         """
@@ -69,7 +70,9 @@ with left_c:
     conditions = True
     if st.session_state.extracted_data is None:
         if st.button("Submit Details & Start Analysis", type="primary", use_container_width=True):
-            with st.status("Processing your request...", expanded=True) as status:        
+            with st.status("Processing your request...", expanded=True) as status: 
+                time.sleep(2)
+       
                 if file is None:
                     st.error("Please upload a PDF file.")
                     conditions = False
@@ -78,32 +81,22 @@ with left_c:
                     conditions = False
 
                 if conditions:
-                    time.sleep(1.5)
                     status.write("Analyzing document structure...")
                     
                     # Call processor file
-                    ai_results = get_info(file, patient_story)
-                    time.sleep(1.5)
+                    ai_results = extraction_agent(file, patient_story)
+                    time.sleep(2)
+                    status.write("Extracting key values...")
+                    
 
-                    # Simulate the dictionary matching your exact schema keys
-                    st.session_state.extracted_data = {
-                        "patient_firstname": "John",
-                        "patient_lastname": "Doe",
-                        "patient_bday": "11/14/1988",
-                        "cpt_codes": "72148",
-                        "claim_number": "CLM-98211-X",
-                        "member_id": "W918233400",
-                        "date_of_denial": "05/12/2026",
-                        "filing_deadline": "11/08/2026",
-                        "insurance_company": "Aetna Health",
-                        "additional_findings": [
-                            {"title": "Prior Conservative Therapy", "value": "Requires 6 weeks of documented physical therapy before authorization."},
-                            {"title": "Appeal Window", "value": "Internal level-1 reviews must be requested within 180 calendar days."},
-                            {"title": "Medical Policy Reference", "value": "Cites Aetna Medical Policy #A45 regarding spinal fusion coverage criteria."}
-                        ]
-                    }
-                    status.update(label="Analysis Complete", state="complete", expanded=False)
-                    st.rerun()
+                    if ai_results is None:
+                        st.error("Error in extraction_agent: Please check your document and story, and try agian. The agent was unable to extract data. ")
+                    else:
+                        st.session_state.extracted_data = ai_results.model_dump()
+                        st.session_state.extracted_data["cpt_codes"] = ", ".join(st.session_state.extracted_data["cpt_codes"])
+                        
+                        status.update(label="Analysis completed", state = "complete", expanded=False)
+                        st.rerun()
     else:
         if st.button("Reset Application & Start New Case", type="primary", use_container_width=True):
             st.session_state.extracted_data = None
